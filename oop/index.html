@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>俄罗斯方块-面向对象版</title>
+</head>
+<body>
+<script>
+var Game={
+	init:function (){
+		var oBody=document.body;
+		var oDiv=document.createElement('div');
+        var oUl=document.createElement('ul');
+		var oInp=document.createElement('input');
+		var arr=[
+
+				'&larr;&nbsp;:&nbsp;左移',
+				'&rarr;&nbsp;:&nbsp;右移',
+				'&uarr;&nbsp;:&nbsp;变形',
+				'&darr;&nbsp;:&nbsp;加速'
+			];
+			
+        oUl.style.cssText='padding:0;margin:50px 0';
+		oDiv.style.cssText='width:100%;height:100%;position:absolute;background:#ccc;text-align:center';
+		
+		for(var i=0,len=arr.length;i<len;i++){
+			var oLi=document.createElement('li');
+			oLi.style.cssText='list-style:none;height:80px;font-size:50px;color:blue';
+			oLi.innerHTML=arr[i]
+			oUl.appendChild(oLi);
+		}
+
+		oInp.style.cssText='font-size:50px;color:green';
+		oInp.type='button';
+		oInp.value='Start Game';
+		oInp.onclick=function (){
+			oDiv.style.display='none';
+			Game.plat();
+		};
+
+        oDiv.appendChild(oUl);
+		oDiv.appendChild(oInp);
+		oBody.appendChild(oDiv);
+		oBody.style.cssText='margin:0';	
+	},
+	
+	plat:function (){
+		var lin=20;
+		var col=12;
+		var oTa=document.createElement('table');
+		var	oTb=document.createElement('tbody');
+		var	oBody=document.body;
+
+		oTa.style.cssText='border:10px solid blue;position:absolute';
+
+		for(var i=0;i<lin;i++){
+			var oTr=document.createElement('tr');
+			for(var j=0;j<col;j++){
+				var oTd=document.createElement('td');
+				oTd.style.cssText='width:20px;height:20px;background:red';
+				oTr.appendChild(oTd);
+			}
+			oTb.appendChild(oTr);
+		}
+		
+        oTa.appendChild(oTb);
+		oBody.appendChild(oTa);
+
+		var oTaLeft=(document.documentElement.clientWidth-oTa.offsetWidth)/2;
+		var oTaTop=(document.documentElement.clientHeight-oTa.offsetHeight)/2;
+
+		oTa.style.left=oTaLeft+'px';
+		oTa.style.top=oTaTop+'px';
+
+		Game.play();
+	},
+
+	play:function (){
+		var 
+			onOff=false,
+			bric=new Brick();
+		
+		bric.born();
+		bric.fall();
+
+		document.onkeydown=function (ev){
+			var
+				e=ev||event,
+				key=e.keyCode;
+
+			switch(key){
+				case 37:
+					bric.ldir();
+					break;
+				case 39:
+					bric.rdir();
+					break;
+				case 38:
+					bric.spin();
+					break;
+				case 40:
+					bric.fall(onOff,30,Game.play);
+					onOff=true;
+					break;
+				case 32:
+					alert('游戏暂停中，点击【确定】按钮继续！');
+					break;
+			}
+		};
+
+		document.onkeyup=function (ev){
+			var 
+				e=ev||event,
+				key=e.keyCode;
+			if(key===40){
+				onOff=false;
+				bric.fall();
+			}
+		};
+	},
+
+	over:function (){}
+};
+
+var House={
+	grow:function (){},
+	sink:function (){}
+};
+
+function Brick(){
+	this.rows=document.getElementsByTagName('table')[0].tBodies[0].rows;
+	this.lins=this.rows.length;
+	this.cols=this.rows[0].cells.length;
+	this.json={iY:1,iX:5,iS:0,iB:Math.floor(Math.random()*7)};
+	this.data=[
+		[
+			[ [0,0],[-1,0],[-1,1],[0,1] ],	//O0
+		],	//O
+		[ 
+			[ [0,0],[0,-1],[0,1],[0,2] ],	//I0
+			[ [0,0],[-1,0],[1,0],[2,0] ]	//I1
+		],	//I
+		[
+			[ [0,0],[0,-1],[-1,0],[-1,1] ],	//S0	
+			[ [0,0],[-1,0],[0,1],[1,1] ],	//S1	
+		],	//S
+		[
+			[ [0,0],[-1,-1],[-1,0],[0,1] ],	//Z0	
+			[ [0,0],[-1,1],[0,1],[1,0] ],	//Z1
+		],	//Z
+		[
+			[ [0,0],[0,-1],[-1,0],[0,1] ],	//T0	
+			[ [0,0],[-1,0],[0,1],[1,0] ],	//T1
+			[ [0,0],[0,-1],[0,1],[1,0] ],	//T2	
+			[ [0,0],[0,-1],[-1,0],[1,0] ],	//T3
+		],	//T
+		[
+			[ [0,0],[0,-1],[-1,1],[0,1] ],	//L0	
+			[ [0,0],[-1,0],[1,1],[1,0] ],	//L1
+			[ [0,0],[0,1],[1,-1],[0,-1] ],	//L2	
+			[ [0,0],[1,0],[-1,-1],[-1,0] ],	//L3
+		],	//L
+		[
+			[ [0,0],[0,-1],[-1,-1],[0,1] ],	//R0	
+			[ [0,0],[-1,0],[-1,1],[1,0] ],	//R1
+			[ [0,0],[0,1],[1,1],[0,-1] ],	//R2	
+			[ [0,0],[1,0],[1,-1],[-1,0] ],	//R3	
+		]	//R
+	];
+}
+
+Brick.prototype.born=function (){
+	var
+		shape=this.data[this.json.iB];
+		state=shape[this.json.iS];
+
+	this.json.cur=[];
+	this.json.doa=this.json.doa||'black';
+
+	for(var i in state){
+		var 
+			coord=state[i],
+			cY=coord[0]+this.json.iY,
+			cX=coord[1]+this.json.iX,
+			arr=[cY,cX];
+
+		this.rows[cY].cells[cX].style.background=this.json.doa;
+		this.json.cur.push(arr);
+	}
+};
+
+Brick.prototype.fall=function (onOff,slot,fn){
+	if(onOff) return;
+	slot=slot||500;
+
+	var _this=this;
+	clearInterval(_this.fallTimer);
+	_this.fallTimer=setInterval(function (){
+		var b=_this.land();
+
+		if( b&2 ){
+			clearInterval(_this.fallTimer);
+			fn && fn();
+			return;
+		}
+
+		_this.illu(function (){
+			_this.json.iY++;		
+		});
+
+	},slot);
+};
+
+Brick.prototype.ldir=function (){
+	var 
+		b=this.land(),
+		j=this.json;
+
+	if( b&2 || b&4 ) return;
+
+	this.illu(function (){
+			
+		j.iX--;		
+	});
+};
+
+Brick.prototype.rdir=function (){
+	var 
+		b=this.land(),
+		j=this.json;
+
+	if( b&2 || b&8 ) return;
+
+	this.illu(function (){
+		j.iX++;		
+	});
+};
+
+Brick.prototype.spin=function (){
+	var 
+		b=this.land(),
+		j=this.json,
+		d=this.data;
+
+	if( b&2 || b&4 ||b&8 ) return;
+
+	this.illu(function (){
+		j.iS++;
+		j.iS%=d[j.iB].length;
+	});
+};
+
+Brick.prototype.illu=function (fn){
+	this.json.doa='red';
+	this.born();
+	this.json.doa='';
+
+	fn && fn();
+	this.born();
+};
+
+Brick.prototype.land=function (){
+	var 
+		arr=this.json.cur,
+		len=arr.length;
+
+	arr.sort(function (a,b){
+		return b[0]-a[0]
+	});
+
+	var bf = arr[0][0]>=this.lins-1 ? 2 : 0 ;
+		
+	arr.sort(function (a,b){
+		return a[1]-b[1];		
+	});
+
+	var
+		bl = arr[0][1]<=0 ? 4 : 0 ,
+		br = arr[len-1][1]>=this.cols-1 ? 8 : 0;
+	
+	return bf+bl+br;
+};
+
+Game.init();
+</script>
+</body>
+</html>
