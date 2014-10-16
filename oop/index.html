@@ -275,6 +275,7 @@ Brick.prototype.fall=function (House,onOff,slot){
 		if(b){
 			clearInterval(_this.fallTimer);
             House.grow(_this.json.cur);
+            _this.stop=true;
 			return;
 		}
 
@@ -286,26 +287,27 @@ Brick.prototype.fall=function (House,onOff,slot){
 };
 // 左移
 Brick.prototype.ldir=function (House){
-	var b=this.land(House);
+	var b=this.stop;
     var l=this.sidl(House);
 	var	j=this.json;
 
-	if(b||l) return;
-
-	this.illu(function (){		
-		j.iX--;		
+    if(b||l)return;
+    
+    this.illu(function (){		
+	    j.iX--;		
 	});
+    	
 };
 // 右移
 Brick.prototype.rdir=function (House){
-	var b=this.land(House);
+	var b=this.stop;
     var r=this.sidr(House);
 	var	j=this.json;
 
-	if(b||r) return;
-
-	this.illu(function (){
-		j.iX++;		
+	if(b||r)return;
+    
+    this.illu(function (){		
+	    j.iX++;		
 	});
 };
 // 变形
@@ -315,13 +317,30 @@ Brick.prototype.spin=function (House){
     var r=this.sidr(House);
 	var	j=this.json;
 	var	d=this.data;
+    var num=0;
 
-	if(b||l||r) return;
+    if(b||l&4||r&4)return;
 
-	this.illu(function (){
+    this.illu(function (){
 		j.iS++;
-		j.iS%=d[j.iB].length;
-	});
+	    j.iS%=d[j.iB].length;
+    });
+    
+    j.cur.sort(function (a,b){
+        return a[1]-b[1];     
+    });
+
+    if(l&2){
+        num=j.cur[0][1]-0; 
+    }else if(r&2){
+        num=this.clos-j.cur[3][1]-1;
+    }
+
+    if(num<0){
+        for(var i=0;i<j.cur.length;i++){
+            j.cur[i][1]-=num;
+        }
+    }
 };
 // 地
 Brick.prototype.land=function (House){
@@ -342,7 +361,10 @@ Brick.prototype.land=function (House){
 
     h=this.bump(House.data,tmp);
 
-    if(g||h)return true;
+    var gNum=g?2:0;
+    var hNum=h?4:0;
+
+    return gNum+hNum;
 };
 // 左边界
 Brick.prototype.sidl=function (House){
@@ -363,7 +385,10 @@ Brick.prototype.sidl=function (House){
 
     h=this.bump(House.data,tmp);
 
-    if(s||h)return true;
+    var sNum=s?2:0;
+    var hNum=h?4:0;
+
+    return sNum+hNum;
 };
 // 右边界
 Brick.prototype.sidr=function (House){
@@ -384,7 +409,10 @@ Brick.prototype.sidr=function (House){
 
     h=this.bump(House.data,tmp);
 
-    if(s||h)return true;
+    var sNum=s?2:0;
+    var hNum=h?4:0;
+
+    return sNum+hNum;
 };
 // 撞房子
 Brick.prototype.bump=function (houseData,tmp){
