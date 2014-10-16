@@ -7,18 +7,18 @@
 <body>
 <script>
 var Game={
+    // 初始页面
 	init:function (){
 		var oBody=document.body;
 		var oDiv=document.createElement('div');
         var oUl=document.createElement('ul');
 		var oInp=document.createElement('input');
 		var arr=[
-
-				'&larr;&nbsp;:&nbsp;左移',
-				'&rarr;&nbsp;:&nbsp;右移',
-				'&uarr;&nbsp;:&nbsp;变形',
-				'&darr;&nbsp;:&nbsp;加速'
-			];
+            '&larr;&nbsp;:&nbsp;左移',
+            '&rarr;&nbsp;:&nbsp;右移',
+            '&uarr;&nbsp;:&nbsp;变形',
+            '&darr;&nbsp;:&nbsp;加速'
+		];
 			
         oUl.style.cssText='padding:0;margin:50px 0';
 		oDiv.style.cssText='width:100%;height:100%;position:absolute;background:#ccc;text-align:center';
@@ -34,7 +34,7 @@ var Game={
 		oInp.type='button';
 		oInp.value='Start Game';
 		oInp.onclick=function (){
-			oDiv.style.display='none';
+			oBody.innerHTML='';
 			Game.plat();
 		};
 
@@ -43,7 +43,7 @@ var Game={
 		oBody.appendChild(oDiv);
 		oBody.style.cssText='margin:0';	
 	},
-	
+	// 地图
 	plat:function (){
 		var lin=20;
 		var col=12;
@@ -74,57 +74,132 @@ var Game={
 
 		Game.play();
 	},
-
+    // 玩
 	play:function (){
-		var 
-			onOff=false,
-			bric=new Brick();
+		var onOff=false;
+		var	bric=new Brick();
 		
 		bric.born();
-		bric.fall();
+		bric.fall(House);
 
 		document.onkeydown=function (ev){
-			var
-				e=ev||event,
-				key=e.keyCode;
+			var e=ev||event;
+			var	key=e.keyCode;
 
 			switch(key){
 				case 37:
-					bric.ldir();
+					bric.ldir(House);
 					break;
 				case 39:
-					bric.rdir();
+					bric.rdir(House);
 					break;
 				case 38:
-					bric.spin();
+					bric.spin(House);
 					break;
 				case 40:
-					bric.fall(onOff,30,Game.play);
+					bric.fall(House,onOff,30);
 					onOff=true;
 					break;
-				case 32:
+				case 80:
+                    // p键暂停
 					alert('游戏暂停中，点击【确定】按钮继续！');
 					break;
 			}
 		};
 
 		document.onkeyup=function (ev){
-			var 
-				e=ev||event,
-				key=e.keyCode;
-			if(key===40){
+			var e=ev||event;
+			var	key=e.keyCode;
+			
+            if(key===40){
 				onOff=false;
-				bric.fall();
+				bric.fall(House);
 			}
 		};
 	},
-
-	over:function (){}
+    // 失败
+	over:function (House){
+        alert('游戏失败，再来一局');
+        document.body.innerHTML='';
+        House.data=[];
+        Game.init();     
+    }
 };
 
+Game.init();
+
 var House={
-	grow:function (){},
-	sink:function (){}
+    data:[],
+    grow:function (arr){
+        var aRow=[];
+        var aCol=[];
+        var aFul=[];
+        for(var i=0;i<arr.length;i++){
+            this.data.push(arr[i]);
+        }
+        this.data.sort(function (a,b){
+            return b[0]-a[0]; 
+        });
+        for(var i=0;i<this.data.length;i++){
+            if(!i){
+                aCol.push(this.data[i]);
+            }else if(this.data[i][0]===this.data[i-1][0]){
+                aCol.push(this.data[i]);
+            }else{
+                aRow.push(aCol);
+                aCol=[];
+                aCol.push(this.data[i]);
+            }
+        }
+        aRow.push(aCol);
+        for(var i=0;i<aRow.length;i++){
+            if(aRow[i].length===12){
+                aFul.push(aRow[i][0][0]);
+            }   
+        }
+        if(aFul.length)this.sink(aRow,aFul);
+        this.data.sort(function (a,b){
+            return a[0]-b[0];        
+        });
+        if(this.data[0][0]<=0){
+            Game.over(House);
+        }else{
+            Game.play();
+        }
+    },
+	sink:function (aRow,aFul){
+        var oTb=document.getElementsByTagName('table')[0].tBodies[0];
+        var aTd=oTb.getElementsByTagName('td');
+        var aTr=oTb.rows;
+        var len=aFul.length;
+        for(var i=aRow.length-1;i>=0;i--){
+            for(var j=0;j<len;j++){
+                if(aRow[i][0][0]===aFul[j]){
+                    aRow.splice(i,1);
+                }
+            } 
+        }
+        this.data=[];
+        for(var i=0;i<aRow.length;i++){
+            for(var j=0;j<aRow[i].length;j++){
+                this.data.push(aRow[i][j]);
+            }
+        }
+        aFul.sort();
+        for(var i=0;i<this.data.length;i++){
+            if(this.data[i][0]<aFul[0]){
+                this.data[i][0]+=len;
+            }
+        }
+        for(var i=0;i<aTd.length;i++){
+            aTd[i].style.background='red';
+        }
+        for(var i=0;i<this.data.length;i++){
+            var iY=this.data[i][0];
+            var iX=this.data[i][1];
+            aTr[iY].cells[iX].style.background='black';
+        }   
+    }
 };
 
 function Brick(){
@@ -168,88 +243,160 @@ function Brick(){
 		]	//R
 	];
 }
-
+// 新方块
 Brick.prototype.born=function (){
-	var
-		shape=this.data[this.json.iB];
-		state=shape[this.json.iS];
+	var shape=this.data[this.json.iB];
+	var	state=shape[this.json.iS];
 
 	this.json.cur=[];
 	this.json.doa=this.json.doa||'black';
 
 	for(var i in state){
-		var 
-			coord=state[i],
-			cY=coord[0]+this.json.iY,
-			cX=coord[1]+this.json.iX,
-			arr=[cY,cX];
+		var coord=state[i];
+		var	cY=coord[0]+this.json.iY;
+		var	cX=coord[1]+this.json.iX;
+		var	arr=[cY,cX];
 
 		this.rows[cY].cells[cX].style.background=this.json.doa;
 		this.json.cur.push(arr);
 	}
 };
+// 下落
+Brick.prototype.fall=function (House,onOff,slot){
+    var _this=this;
 
-Brick.prototype.fall=function (onOff,slot,fn){
-	if(onOff) return;
+    if(onOff) return;
 	slot=slot||500;
 
-	var _this=this;
 	clearInterval(_this.fallTimer);
 	_this.fallTimer=setInterval(function (){
-		var b=_this.land();
+		var b=_this.land(House);
 
-		if( b&2 ){
+		if(b){
 			clearInterval(_this.fallTimer);
-			fn && fn();
+            House.grow(_this.json.cur);
 			return;
 		}
 
 		_this.illu(function (){
-			_this.json.iY++;		
+			_this.json.iY++;
 		});
 
 	},slot);
 };
+// 左移
+Brick.prototype.ldir=function (House){
+	var b=this.land(House);
+    var l=this.sidl(House);
+	var	j=this.json;
 
-Brick.prototype.ldir=function (){
-	var 
-		b=this.land(),
-		j=this.json;
+	if(b||l) return;
 
-	if( b&2 || b&4 ) return;
-
-	this.illu(function (){
-			
+	this.illu(function (){		
 		j.iX--;		
 	});
 };
+// 右移
+Brick.prototype.rdir=function (House){
+	var b=this.land(House);
+    var r=this.sidr(House);
+	var	j=this.json;
 
-Brick.prototype.rdir=function (){
-	var 
-		b=this.land(),
-		j=this.json;
-
-	if( b&2 || b&8 ) return;
+	if(b||r) return;
 
 	this.illu(function (){
 		j.iX++;		
 	});
 };
+// 变形
+Brick.prototype.spin=function (House){
+	var b=this.land(House);
+    var l=this.sidl(House);
+    var r=this.sidr(House);
+	var	j=this.json;
+	var	d=this.data;
 
-Brick.prototype.spin=function (){
-	var 
-		b=this.land(),
-		j=this.json,
-		d=this.data;
-
-	if( b&2 || b&4 ||b&8 ) return;
+	if(b||l||r) return;
 
 	this.illu(function (){
 		j.iS++;
 		j.iS%=d[j.iB].length;
 	});
 };
+// 地
+Brick.prototype.land=function (House){
+    var arr=this.json.cur;
+    var g,h,tmp=[];
 
+    arr.sort(function (a,b){
+		return b[0]-a[0];
+	});
+
+    g=arr[0][0]>=this.lins-1;
+
+    for(var i=0;i<arr.length;i++){
+        var y=arr[i][0]+1;
+        var x=arr[i][1];
+        tmp.push([y,x]); 
+    }
+
+    h=this.bump(House.data,tmp);
+
+    if(g||h)return true;
+};
+// 左边界
+Brick.prototype.sidl=function (House){
+    var arr=this.json.cur;
+    var s,h,tmp=[];
+
+    arr.sort(function (a,b){
+		return a[1]-b[1];
+	});
+
+    s=arr[0][1]<=0;
+
+    for(var i=0;i<arr.length;i++){
+        var y=arr[i][0];
+        var x=arr[i][1]-1;
+        tmp.push([y,x]); 
+    }
+
+    h=this.bump(House.data,tmp);
+
+    if(s||h)return true;
+};
+// 右边界
+Brick.prototype.sidr=function (House){
+    var arr=this.json.cur;
+    var s,h,tmp=[];
+
+    arr.sort(function (a,b){
+		return b[1]-a[1];
+	});
+
+    s=arr[0][1]>=this.cols-1;
+
+    for(var i=0;i<arr.length;i++){
+        var y=arr[i][0];
+        var x=arr[i][1]+1;
+        tmp.push([y,x]); 
+    }
+
+    h=this.bump(House.data,tmp);
+
+    if(s||h)return true;
+};
+// 撞房子
+Brick.prototype.bump=function (houseData,tmp){
+    for(var i=0;i<houseData.length;i++){
+        for(var j=0;j<tmp.length;j++){
+            var b1=houseData[i][0]===tmp[j][0];
+            var b2=houseData[i][1]===tmp[j][1];
+            if(b1&&b2)return true;
+        }
+    }
+}
+// 生灭幻象
 Brick.prototype.illu=function (fn){
 	this.json.doa='red';
 	this.born();
@@ -258,30 +405,6 @@ Brick.prototype.illu=function (fn){
 	fn && fn();
 	this.born();
 };
-
-Brick.prototype.land=function (){
-	var 
-		arr=this.json.cur,
-		len=arr.length;
-
-	arr.sort(function (a,b){
-		return b[0]-a[0]
-	});
-
-	var bf = arr[0][0]>=this.lins-1 ? 2 : 0 ;
-		
-	arr.sort(function (a,b){
-		return a[1]-b[1];		
-	});
-
-	var
-		bl = arr[0][1]<=0 ? 4 : 0 ,
-		br = arr[len-1][1]>=this.cols-1 ? 8 : 0;
-	
-	return bf+bl+br;
-};
-
-Game.init();
 </script>
 </body>
 </html>
