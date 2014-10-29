@@ -2,8 +2,219 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>undefined</title>
+<title>俄罗斯方块-canvas版</title>
 </head>
-<body>
+<body style="text-align:center">
+<script>
+window.onload=function (){
+    init();
+};
+
+var data=[];
+var brick=[];
+var house=[];
+var matrix=[];
+var timer=null;
+
+function mold(num){
+    var O=[[1,1],[1,1]];
+    var I=[[1,1,1,1]];
+    var Z=[[1,1,0],[0,1,1]];
+    var S=[[0,1,1],[1,1,0]];
+    var T=[[0,1,0],[1,1,1]];
+    var L=[[0,0,1],[1,1,1]];
+    var R=[[1,0,0],[1,1,1]];
+    return [O,I,Z,S,T,L,R][num];
+}
+
+function init(){
+    var R=20,C=12,L=20;
+    var H=L*(R+1),W=L*(C+1);
+    var cvs=document.createElement('canvas');
+    var cxt=cvs.getContext('2d');
+    data=map(R,C);
+    cvs.width=W;
+    cvs.height=H;
+    cxt.lineWidth=L;
+    cxt.strokeStyle='#00F';
+    cxt.strokeRect(0,0,W,H);
+    document.body.appendChild(cvs);
+    render(cxt);
+    creat(cxt);
+}
+
+function map(r,c){
+    var data=[];
+    for(var i=0;i<r;i++){
+        var arr=[];
+        for(var j=0;j<c;j++)arr.push(0);
+        data.push(arr);
+    }
+    return data;
+}
+
+function creat(cxt){
+    var num=Math.floor(Math.random()*7);
+    var idx=num===1?4:5;
+    var json={y:0,x:idx};
+    matrix=mold(num);
+    brick=[];
+    rebrick(cxt,json);
+    fall(cxt);
+}
+
+function rebrick(cxt,json){
+    brick=[];
+    for(var i=0;i<matrix.length;i++){
+        for(var j=0;j<matrix[i].length;j++){
+            var Y=i+json.y;
+            var X=j+json.x;
+            data[Y][X]=matrix[i][j];
+            if(data[Y][X])brick.push([Y,X]);
+        }
+    }
+    render(cxt);  
+}
+
+function render(cxt){
+    for(var i=0;i<data.length;i++){
+        for(var j=0;j<data[i].length;j++){
+            cxt.fillStyle=data[i][j]?'#F00':'#000';
+            cxt.fillRect(20*j+11,20*i+11,18,18);
+        }
+    }
+}
+
+function fall(cxt){
+    play(cxt);
+    clearInterval(timer);
+    timer=setInterval(function (){
+        move(cxt,{y:1,x:0});
+    },500);
+}
+
+function move(cxt,json){
+    if(!json.x){
+        if(land(cxt))return;
+    }else{
+        if(side(json))return;
+    }
+    pos(json);
+    render(cxt);
+}
+
+function pos(json){
+    for(var i=0;i<brick.length;i++){
+        var I=json.x===1?3-i:i;
+        var y=brick[I][0];
+        var x=brick[I][1];
+        data[y][x]=0;
+        data[y+json.y][x+json.x]=1;
+        brick[I][1-json.y]=(json.y?y:x)+json.y+json.x;
+    }
+}
+
+function rotate(cxt){
+    if(land(cxt))return;
+    var y=matrix.length;
+    var x=matrix[0].length;
+    var arr=[];
+    for(var i=0;i<x;i++)arr.push([]);
+    for(var i=0;i<y;i++){
+        for(var j=0;j<x;j++)arr[j][y-1-i]=matrix[i][j];
+    }
+    matrix=arr;
+    for(var i=0;i<brick.length;i++)data[brick[i][0]][brick[i][1]]=0;
+    brick.sort(function (a,b){return a[1]-b[1]});
+    rebrick(cxt,{y:brick[0][0],x:brick[0][1]});
+}
+
+function land(cxt){
+    brick.sort(function (a,b){return b[0]-a[0]});
+    if(brick[0][0]===19||bump(0)){
+        clearInterval(timer);
+        rehouse();
+        check(cxt);
+        creat(cxt);
+        return true;
+    }
+}
+
+function check(cxt){
+    var arr=[];
+    for(var i=0;i<data.length;i++){
+        var count=0;
+        for(var j=0;j<data[i].length;j++){
+            if(!i){
+                if(data[i][j])return over(cxt);
+            }else{
+                if(data[i][j])count++;
+                if(count===12)arr.push(i);
+            } 
+        }
+    }
+    if(arr.length)clear(cxt,arr);
+}
+
+function clear(cxt,arr){
+    var tmp=map(arr.length,12);
+    data.splice(arr[0],arr.length);
+    for(var i=0;i<tmp.length;i++){
+        data.unshift(tmp[i]);
+    }
+    rehouse();
+    render(cxt);
+}
+
+function rehouse(){
+    house=[];
+    for(var i=0;i<data.length;i++){
+        for(j=0;j<data[i].length;j++){
+            if(data[i][j])house.push([i,j]);
+        }
+    }
+}
+
+function over(cxt){
+    alert('游戏失败，再来一局！');
+    house=[];
+    data=map(20,12);
+    render(cxt);
+    creat(cxt);
+}
+
+function side(json){
+    brick.sort(function (a,b){return a[1]-b[1]});
+    if(json.x===1){
+        if(brick[3][1]>=11||bump(1))return true; 
+    }else{
+        if(brick[0][1]<=0||bump(-1))return true;
+    }
+}
+
+function bump(num){
+    for(var i=0;i<brick.length;i++){
+        for(var j=0;j<house.length;j++){
+            var Z=Math.abs(num);
+            var a=brick[i][Z]+(num||1)===house[j][Z];
+            var b=brick[i][1-Z]===house[j][1-Z];
+            if(a&&b)return true;
+        }
+    }
+}
+
+function play(cxt){
+    document.onkeydown=function (ev){
+        var kc=(ev||event).keyCode;
+        switch(kc){
+            case 38:rotate(cxt);break;
+            case 37:move(cxt,{y:0,x:-1});break;
+            case 39:move(cxt,{y:0,x:1});break;
+            case 40:move(cxt,{y:1,x:0});break;
+            default:console.log(kc);break;
+        }
+    };
+}
+</script>
 </body>
 </html>
